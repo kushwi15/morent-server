@@ -4,8 +4,9 @@ const fs = require("fs");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const userId = req.user?.user_id;
-
+    // Try multiple ways to get userId
+    const userId = req.user?._id || req.body?.userId || req.params?.userId;
+    
     if (!userId) {
       return cb(new Error("User ID is required for file uploads"), null);
     }

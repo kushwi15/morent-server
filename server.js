@@ -11,6 +11,7 @@ const app = express();
 
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.use(cors());
 
@@ -20,7 +21,11 @@ app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: err.message });
+});
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, {
