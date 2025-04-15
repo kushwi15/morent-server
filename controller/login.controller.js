@@ -1,10 +1,11 @@
 const User = require("../model/user.model");
+const Owner = require("../model/owner.model"); // Assuming you have an Owner model
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
 const login = async (req, res) => {
   try {
-    const { email, phoneNumber, password } = req.body;
+    const { email, phoneNumber, password, role = 'user' } = req.body;
 
     // Validate input
     if (!password || (!email && !phoneNumber)) {
@@ -14,21 +15,24 @@ const login = async (req, res) => {
       });
     }
 
+    // Determine which model to use based on role
+    const Model = role === 'owner' ? Owner : User;
+    
     // Build query
     const query = email ? { email } : { phoneNumber };
     
-    // Find user with password
-    const user = await User.findOne(query).select('+password +otp');
+    // Find user/owner with password
+    const account = await Model.findOne(query).select('+password');
     
-    if (!user) {
+    if (!account) {
       return res.status(404).json({ 
         success: false, 
-        message: "User not found with these credentials" 
+        message: `${role === 'owner' ? 'Owner' : 'User'} not found with these credentials` 
       });
     }
 
     // Compare passwords
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, account.password);
     if (!isMatch) {
       return res.status(401).json({ 
         success: false, 
@@ -36,26 +40,39 @@ const login = async (req, res) => {
       });
     }
 
-    // Create token
+    // Create token with role information
     const token = jwt.sign(
-      { userId: user._id },
+      { 
+        userId: account._id,
+        role: role,
+        email: account.email,
+        phoneNumber: account.phoneNumber
+      },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    // Prepare user data without sensitive fields
-    const userData = {
-      _id: user._id,
-      fullName: user.fullName,
-      email: user.email,
-      phoneNumber: user.phoneNumber
+    // Prepare account data without sensitive fields
+    const accountData = {
+      _id: account._id,
+      fullName: account.fullName,
+      email: account.email,
+      phoneNumber: account.phoneNumber,
+      role: role
     };
+
+    // Additional owner-specific fields if needed
+    if (role === 'owner') {
+      accountData.businessName = account.businessName;
+      accountData.businessAddress = account.businessAddress;
+      // Add any other owner-specific fields
+    }
 
     return res.status(200).json({
       success: true,
-      user: userData,
+      user: accountData,
       token,
-      message: "Login successful"
+      message: `${role === 'owner' ? 'Owner' : 'User'} login successful`
     });
 
   } catch (error) {

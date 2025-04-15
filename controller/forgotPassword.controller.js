@@ -1,13 +1,19 @@
 const User = require("../model/user.model");
+const Owner = require("../model/owner.model");
 const bcrypt = require("bcryptjs");
 const generateOTP = require("../utils/generateOTP");
 const sendSMS = require("../utils/sendSMS");
 const sendEmail = require("../utils/sendEmail");
 const jwt = require("jsonwebtoken");
 
+const getModelByRole = (role) => {
+  if (role === 'owner') return Owner;
+  return User;
+};
+
 const forgotPassword = async (req, res) => {
   try {
-    const { email, phoneNumber } = req.body;
+    const { email, phoneNumber, role = 'user' } = req.body;
 
     if (!email && !phoneNumber) {
       return res.status(400).json({ 
@@ -16,7 +22,8 @@ const forgotPassword = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({
+    const Model = getModelByRole(role);
+    const user = await Model.findOne({
       $or: [
         ...(email ? [{ email }] : []),
         ...(phoneNumber ? [{ phoneNumber }] : [])
@@ -26,7 +33,7 @@ const forgotPassword = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found with the provided credentials"
+        message: `${role.charAt(0).toUpperCase() + role.slice(1)} not found with the provided credentials`
       });
     }
 
@@ -70,7 +77,7 @@ const forgotPassword = async (req, res) => {
 
 const verifyOTP = async (req, res) => {
   try {
-    const { email, phoneNumber, otp } = req.body;
+    const { email, phoneNumber, otp, role = 'user' } = req.body;
 
     if (!otp || (!email && !phoneNumber)) {
       return res.status(400).json({
@@ -79,7 +86,8 @@ const verifyOTP = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({
+    const Model = getModelByRole(role);
+    const user = await Model.findOne({
       $or: [
         ...(email ? [{ email }] : []),
         ...(phoneNumber ? [{ phoneNumber }] : [])
@@ -89,7 +97,7 @@ const verifyOTP = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found"
+        message: `${role.charAt(0).toUpperCase() + role.slice(1)} not found`
       });
     }
 
@@ -105,7 +113,7 @@ const verifyOTP = async (req, res) => {
     await user.save();
 
     const resetToken = jwt.sign(
-      { userId: user._id },
+      { userId: user._id, role },
       process.env.JWT_SECRET,
       { expiresIn: '15m' }
     );
@@ -127,20 +135,19 @@ const verifyOTP = async (req, res) => {
   }
 };
 
-// In your forgotPassword.controller.js
 const resetPassword = async (req, res) => {
   try {
-    const { userId, newPassword } = req.body;
+    const { userId, newPassword, role = 'user' } = req.body;
 
-    // Hash new password
+    const Model = getModelByRole(role);
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    // Update user
-    await User.findByIdAndUpdate(userId, { 
+    await Model.findByIdAndUpdate(userId, {
       password: hashedPassword,
       otp: undefined,
-      otpExpiry: undefined 
+      otpExpiry: undefined
     });
 
     return res.status(200).json({

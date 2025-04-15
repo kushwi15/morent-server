@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../model/user.model");
+const Owner = require("../model/owner.model");
 
 const verifyToken = async (req, res, next) => {
   try {
@@ -12,19 +13,34 @@ const verifyToken = async (req, res, next) => {
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    if (decoded.role === "owner") {
+      const ownerData = await Owner.findById(decoded.userId);
+      if (!ownerData) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      req.owner = {
+        owner_id: ownerData._id,
+        name: ownerData.fullName,
+        phoneNumber: ownerData.phoneNumber,
+        email: ownerData.email,
+      };
+      console.log("middleware (owner):", req.owner);
+    } else {
+      const userData = await User.findById(decoded.userId);
+      if (!userData) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      req.user = {
+        user_id: userData._id,
+        name: userData.fullName,
+        phoneNumber: userData.phoneNumber,
+        email: userData.email,
+      };
+      console.log("middleware (user):", req.user);
     }
 
-    // Attach user info to req
-    req.user = {
-      user_id: user._id,
-      name: user.fullName,
-      phoneNumber: user.phoneNumber,
-      email: user.email,
-    };
-    console.log("middleware", req.user);
     next();
   } catch (error) {
     console.error("Token verification error:", error);
