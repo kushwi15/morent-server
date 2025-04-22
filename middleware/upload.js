@@ -4,20 +4,25 @@ const fs = require("fs");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Try multiple ways to get userId
-    const userId = req.user?._id || req.body?.userId || req.params?.userId;
-    
-    if (!userId) {
-      return cb(new Error("User ID is required for file uploads"), null);
+    // Get userId or ownerId from multiple possible sources
+    const userId = req.user?._id || req.owner?._id || req.body?.userId || req.params?.userId;
+    const ownerId = req.user?.ownerId || req.owner?.ownerId || req.body?.ownerId || req.params?.ownerId;
+
+    if (!userId && !ownerId) {
+      return cb(new Error("User ID or Owner ID is required for file uploads"), null);
     }
 
-    const uploadDir = path.join(__dirname, "../uploads", userId);
+    const baseDir = ownerId ? "owners" : "users";
+    const id = ownerId || userId;
+
+    const uploadDir = path.join(__dirname, "../uploads", baseDir, id);
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
     cb(null, uploadDir);
   },
+
   filename: (req, file, cb) => {
     const allowedExt = [".jpg", ".jpeg", ".png"];
     const originalExt = path.extname(file.originalname).toLowerCase();
@@ -33,7 +38,7 @@ const storage = multer.diskStorage({
       panCard: `pancard${originalExt}`,
       passport: `passport${originalExt}`,
       driversLicense: `drivers-license${originalExt}`,
-    };
+    };    
 
     const fileName = fileNameMap[file.fieldname] || `other-${Date.now()}${originalExt}`;
     cb(null, fileName);

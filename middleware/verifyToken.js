@@ -13,8 +13,10 @@ const verifyToken = async (req, res, next) => {
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    console.log("Decoded Token:", decoded); // 🔍 Log the decoded token
+
     if (decoded.role === "owner") {
-      const ownerData = await Owner.findById(decoded.userId);
+      const ownerData = await Owner.findById(decoded.ownerId); // 🔧 Fixed key: ownerId
       if (!ownerData) {
         return res.status(404).json({ message: "Owner not found" });
       }
@@ -25,7 +27,8 @@ const verifyToken = async (req, res, next) => {
         phoneNumber: ownerData.phoneNumber,
         email: ownerData.email,
       };
-      console.log("middleware (owner):", req.owner);
+
+      console.log("Middleware (Owner Verified):", req.owner);
     } else {
       const userData = await User.findById(decoded.userId);
       if (!userData) {
@@ -38,7 +41,8 @@ const verifyToken = async (req, res, next) => {
         phoneNumber: userData.phoneNumber,
         email: userData.email,
       };
-      console.log("middleware (user):", req.user);
+
+      console.log("Middleware (User Verified):", req.user);
     }
 
     next();
