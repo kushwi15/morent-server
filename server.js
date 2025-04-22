@@ -4,10 +4,9 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
 
-const authRoutes = require("./router/auth.route");
-// const profileRoutes = require("./Router/profile.route");
-const userProfileRoutes = require("./router/userProfile.route");
-const ownerProfileRoutes = require("./router/ownerProfile.route");
+const authRoutes = require("./Router/auth.route");
+const userProfileRoutes = require("./Router/userProfile.route");
+const ownerProfileRoutes = require("./Router/ownerProfile.route");
 
 const app = express();
 
@@ -20,7 +19,6 @@ app.use(cors());
 
 // Routes
 app.use("/api/auth", authRoutes);
-// app.use("/api/profile", profileRoutes);
 app.use("/api/userProfile", userProfileRoutes);
 app.use("/api/ownerProfile", ownerProfileRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
